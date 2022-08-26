@@ -1,12 +1,28 @@
 Package: bossR
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: BOSS: Beta-mixture Unsupervised Oligodendrocytes Segmentation System
+Version: 0.0.0.0000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+    person("Eunchan", "Bae", , "ecbae@pennmedicine.upenn.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-2941-3717"))
+Description: R package to run BOSS model
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
+Imports: 
+    ANTsR,
+    rdist,
+    ANTsRCore (>= 0.3.4),
+    extrantsr (>= 3.1),
+    dplyr,
+    neurobase (>= 1.27.11),
+    parallel (>= 2.14.0),
+    mclust,
+    betareg,
+    mmand,
+    parallel,
+    ITKR
+Remotes: 
+  ANTsX/ANTsRCore, ANTsX/ANTsR, muschellij2/extrantsr, muschellij2/neurobase, stnava/ITKR
+VignetteBuilder: knitr
