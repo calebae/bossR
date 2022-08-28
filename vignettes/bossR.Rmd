@@ -1,5 +1,5 @@
 ---
-title: "How to get run BOSS model, from preprocessing to visualization"
+title: "BOSS"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{How to get run BOSS model, from preprocessing to visualization}
@@ -14,6 +14,156 @@ knitr::opts_chunk$set(
 )
 ```
 
+## Overview
+
+The `bossR` package segments and tracks the cells from the BOSS method. Access to the full papers can be found [here](https://www.biorxiv.org/content/10.1101/2022.06.17.495689v1). Additionally, it allows for visualization of the segmented/tracked cells overlayed in original image.
+
+## Installation
+
+You can install the development version of bossR like so:
+
+```{r, eval = FALSE}
+devtools::install_github('calebae/bossR')
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(tiff)
+library(betareg)
+library(oro.nifti)
+library(mmand)
+library(scales)
+library(dplyr)
+library(bossR)
+```
+
+## Tutorial Data
+
+We will be using data from one of microarray images, published in [Remyelination alters the pattern of myelin in the cerebral cortex](https://elifesciences.org/articles/56621). Data can be obtained from [here](https://upenn.box.com/s/g5wg36fijfl5j56laoz31mn5u6s3y9kx)
+
+The `BOSS` algorithm is designed to segment and track any cells in longitudinally obtained images. For illustration, we show how `BOSS` algorithm works to track oligodendrocytes.
+
+
+### Getting the data 
+
+`tiff` file can be loaded into `R` by using `tiff::readTIFF()` function. 
+
+```{r}
+setwd("~/Desktop/bossR/")
+list.files()
+trt.mouse <- readTIFF("C1-MOBP4_072317_Image2-Regx3.tif", all=TRUE, info = TRUE)
+```
+
+Since our data is 4D which is 3D ($X, Y, Z$) + time ($T$) whereas `nifti` file can contain 3D, subset the `nifti` files for each time-point. Total number $Z$ and $T$ can be obtained from `tiff::readTIFF()` function. 
+
+ `tiff::readTIFF()` stores 2D ($X, Y$) matrix in every $Z \cdot T$ lists, therefore we first need to get $Z$ and $T$ from TIFF tags and transform `tiff` file to `nifti` file format with right dimension.
+
+```{r, include=FALSE}
+tiff.info <- attr(trt.mouse[[1]], "description")
+Z.info <- unlist(strsplit(tiff.info, split = "\n"))[3]
+Z <- as.numeric(unlist(strsplit(Z.info, split="="))[2])
+
+T.info <- unlist(strsplit(tiff.info, split = "\n"))[4]
+T <- as.numeric(unlist(strsplit(T.info, split="="))[2])
+
+# Resoultion information will be used later
+X.resolution.info <- attr(trt.mouse[[1]], "x.resolution")
+Y.resolution.info <- attr(trt.mouse[[1]], "y.resolution")
+```
+
+There are $Z$ =`r Z`, $T$ = `r T`. 
+
+Code below illustrates how to construct 3D images, from stacks of 2D `tiff` images.
+Depending on the file structure, you will need to modify the code below to construct 3D images.
+
+```{r, include=FALSE}
+
+rotate <- function(x) t(apply(x, 2, rev))
+
+nifti1 <- array(NA, dim=c(rev(dim(trt.mouse[[1]])[1:2]), Z))
+for(i in 1:Z){
+  # Note that we need to rotate 90 degree clockwise
+  # to get the same image as FIJI
+  nifti1[,,i] <- rotate(trt.mouse[[i]][,,1])
+}
+
+rm(trt.mouse)
+
+trt.nifti1 <- as.nifti(nifti1)
+```
+
+Brain image of control mouse at $Z$ = 8 and $T$ = 1 is as follows.
+```{r} 
+image(control.nifti1, z = 8, plot.type='single')
+```
+
+### Getting the manual-segmentation for evaluation
+
+ Jennifer provided us the `xls` file but `readxl::read_xls()` nor `readxl::read_excel()` can read the file. So, I converted `xls` file to `csv` file and read the file into `R`. 
+```{r}
+trt.mask<-read.csv("Stat Results Table.csv")
+```
+
+ For exploratory purpose, let's get the ROI at $T=1$.
+ 
+ Note that original file records the ROI with its coordinate ($X, Y$), therefore we need to convert it by using its resolution information.
+
+```{r}
+trt.mask1 <- trt.mask %>% filter(T==1) 
+mask.dat <- array(NA, dim = c(1109, 1053, 190))
+  
+for(i in 1:Z){
+  tmp <- trt.mask1 %>% filter(Z == i)
+  if(nrow(tmp)==0){next}
+  tmp.dat <- data.frame(X.pixel = tmp$X * X.resolution.info, 
+                          Y.pixel = tmp$Y * Y.resolution.info,
+                          Z = i)
+  
+  for(j in 1:nrow(tmp.dat)){
+    X.pixel <- round(tmp.dat$X.pixel[j])
+    X.pixel <- (X.pixel-5) : (X.pixel+5)
+    Y.pixel <- round(tmp.dat$Y.pixel[j])
+    Y.pixel <- (Y.pixel-5) : (Y.pixel+5)
+    # Be careful about Y axis.
+    mask.dat[X.pixel, 1053-Y.pixel, tmp.dat$Z[j]] <- 255
+  }
+}
+
+mask.dat <- as.nifti(mask.dat)
+```
+
+ Image with ROI at $Z$ = 8, $T$ = 1 is as follows. Red square is our ROI. 
+ This image indicates that there could be some FALSE POSITIVE issues when we validate our model.
+
+ 
+```{r}
+overlay.nifti(is_roi, mask.dat, z = 10, plot.type = 'single')
+```
+
+ Image with ROI at $Z$ = 91, $T$ = 1 is as follows. This image will be used to see
+ the performance of `neuroim::connComp3D`. 
+ This image indicates that there could be some FALSE NEGATIVE issues when we validate our model.
+```{r}
+overlay.nifti(control.nifti1, mask.dat, z = 91, plot.type = 'single')
+```
+
+
+
+### Preprocessing
+
+### Intensity Modeling
+
+### Median Filtering
+
+### Cell Annotation
+
+### Post-processing
+
+### (Optional) Visualization
+
 ```{r setup}
 library(bossR)
+```
+
+```{r}
+
 ```

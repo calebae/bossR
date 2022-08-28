@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# bossR <img src="./man/figures/sticker.png" width = "150" align = "right" />
+# BOSS <img src="./man/figures/sticker.png" width = "150" align = "right" />
 
 <!-- badges: start -->
 <!-- badges: end -->

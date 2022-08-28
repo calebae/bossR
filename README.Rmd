@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# bossR <img src="./man/figures/sticker.png" width = "150" align = "right" />
+# BOSS <img src="./man/figures/sticker.png" width = "150" align = "right" />
 
 <!-- badges: start -->
 <!-- badges: end -->
@@ -32,10 +32,5 @@ devtools::install_github('calebae/bossR')
 ## Vignette
 
 For a full implementation of the methods with output please see our [vignette]().
-
-```{r example}
-library(bossR)
-## basic example code
-```
 
 
