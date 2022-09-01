@@ -10,52 +10,58 @@
 #' @examples
 #' boss_betamix(img, 0.8, 2)
 #'
-boss_betamix <- function(img, min.intensity, mix.num, threshold.percentile = 0.8){
+boss_betamix <- function(img, maxZ = NULL, min.intensity.percentile = 0.98, mix.num = 2, threshold.percentile = 0.8,
+                cores = 1, verbose = TRUE, retimg = TRUE){
 
-  x.nifti <- img
-  x<-as.vector(x.nifti)
-
-  x<-x[x>min.intensity]
-  original.scale.x <- range(x)
-
-  threshold <- quantile(x, threshold.percentile)
-
-  x <- scales::rescale(x, to = c(0.0001,0.9999), from = range(x))
-
-  x.beta <- data.frame(y = x)
-  m <- betamix(y ~ 1, data = x.beta, k = 1:mix.num)
-
-
-  if(length(unique(clusters(m)))>1){
-
-    mu <- plogis(coef(m)[,1])
-    phi <- exp(coef(m)[,2])
-
-    a <- mu * phi
-    b <- (1 - mu) * phi
-    cl <- clusters(m)
-
-    ys <- seq(0, 1, by = 0.01)
-
-
-    if(mu[1]>mu[2]){
-      density.difference = dbeta(ys, shape1 = a[1], shape2 = b[1]) -
-        dbeta(ys, shape1 = a[2], shape2 = b[2])}else{
-          density.difference = dbeta(ys, shape1 = a[2], shape2 = b[2]) -
-            dbeta(ys, shape1 = a[1], shape2 = b[1])
-        }
-
-    intersection.point <- (which(diff(density.difference > 0) != 0) + 1)
-    if(any(intersection.point>=100)){
-      intersection.point <- intersection.point[-which(intersection.point>=100)]}
-
-    for(i in 1:length(intersection.point)){
-      if(density.difference[intersection.point[i]+1] - density.difference[intersection.point[i]-1]>0){
-        before.threshold <- ys[intersection.point[i]]
-      }
-    }
-    threshold <- scales::rescale(before.threshold, to = original.scale.x, from = c(0.0001,0.9999))
+  if (verbose) {
+    messsage("# Loading data...")
   }
 
-  return(threshold)
+
+  if (verbose) {
+  messsage("# Running Intensity Modeling Algorithm")
+  }
+
+
+  min.intensity.vector <- apply(img, 3, quantile, probs = min.intensity.percentile)
+  if(is.null(maxZ)){
+    threshold <- mclapply(1:dim(img)[3], parallel_img_fun, img = img, mc.cores = cores)
+    threshold.value <- unlist(threshold)
+    if (verbose) {
+      messsage("# Binarizing the ROI and background")
+    }
+    roi.img <- array(NA, dim = dim(img))
+
+    for(i in 1:dim(img)[3]){
+      roi_file <- img[,,i]
+
+      is_roi <- (roi_file >= threshold.value[i])
+
+      is_roi[which(is_roi==0)] <- NA
+      roi.img[,,i] <- is_roi
+    }
+
+  }else{
+    threshold <- mclapply(1:maxZ, parallel_img_fun, img = img, mc.cores = cores)
+    threshold.value <- unlist(threshold)
+    if (verbose) {
+      messsage("# Binarizing the ROI and background")
+    }
+    roi.img <- array(NA, dim = c(dim(img)[1:2],maxZ))
+
+    for(i in 1:maxZ){
+      roi_file <- img[,,i]
+
+      is_roi <- (roi_file >= threshold.value[i])
+
+      is_roi[which(is_roi==0)] <- NA
+      roi.img[,,i] <- is_roi
+    }
+  }
+
+  roi.img[which(roi.img==1)] <- 1
+  roi.img[which(is.na(roi.img))] <- 0
+
+    return(roi.img)
+
 }

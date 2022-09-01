@@ -33,6 +33,7 @@ library(oro.nifti)
 library(mmand)
 library(scales)
 library(dplyr)
+library(parallel)
 library(bossR)
 ```
 
@@ -49,7 +50,6 @@ The `BOSS` algorithm is designed to segment and track any cells in longitudinall
 
 ```{r}
 setwd("~/Desktop/bossR/")
-list.files()
 trt.mouse <- readTIFF("C1-MOBP4_072317_Image2-Regx3.tif", all=TRUE, info = TRUE)
 ```
 
@@ -76,7 +76,6 @@ Code below illustrates how to construct 3D images, from stacks of 2D `tiff` imag
 Depending on the file structure, you will need to modify the code below to construct 3D images.
 
 ```{r, include=FALSE}
-
 rotate <- function(x) t(apply(x, 2, rev))
 
 nifti1 <- array(NA, dim=c(rev(dim(trt.mouse[[1]])[1:2]), Z))
@@ -91,15 +90,16 @@ rm(trt.mouse)
 trt.nifti1 <- as.nifti(nifti1)
 ```
 
-Brain image of control mouse at $Z$ = 8 and $T$ = 1 is as follows.
+Brain image of cuprizone-treated mouse at $Z$ = 100 and $T$ = 1 is as follows.
 ```{r} 
-image(control.nifti1, z = 8, plot.type='single')
+image(trt.nifti1, z = 91, plot.type='single')
 ```
 
 ### Getting the manual-segmentation for evaluation
 
- Jennifer provided us the `xls` file but `readxl::read_xls()` nor `readxl::read_excel()` can read the file. So, I converted `xls` file to `csv` file and read the file into `R`. 
+ If you have a manual segmentation, you can overlay the segmentation on its image.
 ```{r}
+setwd("~/Desktop/bossR/")
 trt.mask<-read.csv("Stat Results Table.csv")
 ```
 
@@ -109,7 +109,7 @@ trt.mask<-read.csv("Stat Results Table.csv")
 
 ```{r}
 trt.mask1 <- trt.mask %>% filter(T==1) 
-mask.dat <- array(NA, dim = c(1109, 1053, 190))
+mask.dat <- array(NA, dim = dim(trt.nifti1))
   
 for(i in 1:Z){
   tmp <- trt.mask1 %>% filter(Z == i)
@@ -123,42 +123,93 @@ for(i in 1:Z){
     X.pixel <- (X.pixel-5) : (X.pixel+5)
     Y.pixel <- round(tmp.dat$Y.pixel[j])
     Y.pixel <- (Y.pixel-5) : (Y.pixel+5)
+    Z.pixel <- (tmp.dat$Z[j]-2) : (tmp.dat$Z[j]+2)
     # Be careful about Y axis.
-    mask.dat[X.pixel, 1053-Y.pixel, tmp.dat$Z[j]] <- 255
+    mask.dat[X.pixel, dim(trt.nifti1)[2]-Y.pixel, Z.pixel] <- 255
   }
 }
 
 mask.dat <- as.nifti(mask.dat)
 ```
 
- Image with ROI at $Z$ = 8, $T$ = 1 is as follows. Red square is our ROI. 
- This image indicates that there could be some FALSE POSITIVE issues when we validate our model.
-
- 
-```{r}
-overlay.nifti(is_roi, mask.dat, z = 10, plot.type = 'single')
-```
-
  Image with ROI at $Z$ = 91, $T$ = 1 is as follows. This image will be used to see
  the performance of `neuroim::connComp3D`. 
  This image indicates that there could be some FALSE NEGATIVE issues when we validate our model.
+ 
 ```{r}
-overlay.nifti(control.nifti1, mask.dat, z = 91, plot.type = 'single')
+overlay.nifti(trt.nifti1, mask.dat, z = 91, plot.type = 'single')
 ```
-
-
-
-### Preprocessing
 
 ### Intensity Modeling
 
-### Median Filtering
+We highly recommend to use the parallel computing
 
-### Cell Annotation
+```{r}
+roi.img <- boss_betamix(img = trt.nifti1, output_directory = paste0(getwd(),"/Binarized/",T), retimg = TRUE)
+```
 
-### Post-processing
+```{r}
+image(as.nifti(roi.img), z = 91, plot.type='single')
+```
 
-### (Optional) Visualization
+```{r}
+overlay.nifti(as.nifti(roi.img), as.nifti(mask.dat[,,1:110]), z = 91, plot.type = 'single')
+```
+
+### Median Filtering 
+
+```{r}
+filtered.img <- boss_filtering(roi.img, output_directory = paste0(getwd(), "/Filtered/",T), retimg = TRUE)
+```
+
+```{r}
+overlay.nifti(as.nifti(filtered_img[,,1:110]), as.nifti(mask.dat[,,1:110]), z = 91, plot.type = 'single')
+```
+### Cell Tracking 
+
+```{r}
+setwd("/Users/eunchan/Box Sync/BOSS_example/Filtered/")
+
+
+T1 <- readRDS("10-median-filtered-1.rds")
+T2 <- readRDS("10-median-filtered-2.rds")
+T3 <- readRDS("10-median-filtered-3.rds")
+T4 <- readRDS("10-median-filtered-4.rds")
+T5 <- readRDS("10-median-filtered-5.rds")
+T6 <- readRDS("10-median-filtered-6.rds")
+T7 <- readRDS("10-median-filtered-7.rds")
+T8 <- readRDS("10-median-filtered-8.rds")
+T9 <- readRDS("10-median-filtered-9.rds")
+T10 <- readRDS("10-median-filtered-10.rds")
+T11 <- readRDS("10-median-filtered-11.rds")
+T12 <- readRDS("10-median-filtered-12.rds")
+
+
+filtered.img <- array(0, dim=c(dim(T1),12))
+
+filtered.img[,,,1] <- T1
+filtered.img[,,,2] <- T2
+filtered.img[,,,3] <- T3
+filtered.img[,,,4] <- T4
+filtered.img[,,,5] <- T5
+filtered.img[,,,6] <- T6
+filtered.img[,,,7] <- T7
+filtered.img[,,,8] <- T8
+filtered.img[,,,9] <- T9
+filtered.img[,,,10] <- T10
+filtered.img[,,,11] <- T11
+filtered.img[,,,12] <- T12
+
+
+```
+```{r}
+boss_tracking(img = filtered.img, output_directory = "~/Box Sync/BOSS_example/BOSS_result", maxZ = 110, maxT = 12)
+```
+
+### Visualization
+
+```{r}
+```
 
 ```{r setup}
 library(bossR)
