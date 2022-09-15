@@ -14,12 +14,12 @@ boss_betamix <- function(img, maxZ = NULL, min.intensity.percentile = 0.98, mix.
                 cores = 1, verbose = TRUE, retimg = TRUE){
 
   if (verbose) {
-    messsage("# Loading data...")
+    message("# Loading data...")
   }
 
 
   if (verbose) {
-  messsage("# Running Intensity Modeling Algorithm")
+    message("# Running Intensity Modeling Algorithm")
   }
 
 
@@ -28,7 +28,7 @@ boss_betamix <- function(img, maxZ = NULL, min.intensity.percentile = 0.98, mix.
     threshold <- mclapply(1:dim(img)[3], parallel_img_fun, img = img, mc.cores = cores)
     threshold.value <- unlist(threshold)
     if (verbose) {
-      messsage("# Binarizing the ROI and background")
+      message("# Binarizing the ROI and background")
     }
     roi.img <- array(NA, dim = dim(img))
 
@@ -45,7 +45,7 @@ boss_betamix <- function(img, maxZ = NULL, min.intensity.percentile = 0.98, mix.
     threshold <- mclapply(1:maxZ, parallel_img_fun, img = img, mc.cores = cores)
     threshold.value <- unlist(threshold)
     if (verbose) {
-      messsage("# Binarizing the ROI and background")
+      message("# Binarizing the ROI and background")
     }
     roi.img <- array(NA, dim = c(dim(img)[1:2],maxZ))
 

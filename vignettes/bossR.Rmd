@@ -49,8 +49,8 @@ The `BOSS` algorithm is designed to segment and track any cells in longitudinall
 `tiff` file can be loaded into `R` by using `tiff::readTIFF()` function. 
 
 ```{r}
-setwd("~/Desktop/bossR/")
-trt.mouse <- readTIFF("C1-MOBP4_072317_Image2-Regx3.tif", all=TRUE, info = TRUE)
+setwd("~/Box Sync/BOSS_example/")
+trt.mouse <- readTIFF("example_img.tif", all=TRUE, info = TRUE)
 ```
 
 Since our data is 4D which is 3D ($X, Y, Z$) + time ($T$) whereas `nifti` file can contain 3D, subset the `nifti` files for each time-point. Total number $Z$ and $T$ can be obtained from `tiff::readTIFF()` function. 
@@ -92,14 +92,14 @@ trt.nifti1 <- as.nifti(nifti1)
 
 Brain image of cuprizone-treated mouse at $Z$ = 100 and $T$ = 1 is as follows.
 ```{r} 
-image(trt.nifti1, z = 91, plot.type='single')
+image(trt.nifti1, z = 21, plot.type='single')
 ```
 
 ### Getting the manual-segmentation for evaluation
 
  If you have a manual segmentation, you can overlay the segmentation on its image.
 ```{r}
-setwd("~/Desktop/bossR/")
+setwd("~/Box Sync/BOSS_example/")
 trt.mask<-read.csv("Stat Results Table.csv")
 ```
 
@@ -123,7 +123,7 @@ for(i in 1:Z){
     X.pixel <- (X.pixel-5) : (X.pixel+5)
     Y.pixel <- round(tmp.dat$Y.pixel[j])
     Y.pixel <- (Y.pixel-5) : (Y.pixel+5)
-    Z.pixel <- (tmp.dat$Z[j]-2) : (tmp.dat$Z[j]+2)
+    Z.pixel <- max(1,(tmp.dat$Z[j]-2)) : min(Z,(tmp.dat$Z[j]+2))
     # Be careful about Y axis.
     mask.dat[X.pixel, dim(trt.nifti1)[2]-Y.pixel, Z.pixel] <- 255
   }
@@ -137,7 +137,7 @@ mask.dat <- as.nifti(mask.dat)
  This image indicates that there could be some FALSE NEGATIVE issues when we validate our model.
  
 ```{r}
-overlay.nifti(trt.nifti1, mask.dat, z = 91, plot.type = 'single')
+overlay.nifti(trt.nifti1, mask.dat, z = 21, plot.type = 'single')
 ```
 
 ### Intensity Modeling
@@ -149,11 +149,11 @@ roi.img <- boss_betamix(img = trt.nifti1, output_directory = paste0(getwd(),"/Bi
 ```
 
 ```{r}
-image(as.nifti(roi.img), z = 91, plot.type='single')
+image(as.nifti(roi.img), z = 21, plot.type='single')
 ```
 
 ```{r}
-overlay.nifti(as.nifti(roi.img), as.nifti(mask.dat[,,1:110]), z = 91, plot.type = 'single')
+overlay.nifti(as.nifti(roi.img), as.nifti(mask.dat[,,1:110]), z = 21, plot.type = 'single')
 ```
 
 ### Median Filtering 
